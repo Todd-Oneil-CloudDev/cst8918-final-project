@@ -1,0 +1,35 @@
+# Terraform
+.terraform/
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Exception: commit the backend bootstrap's own local state on purpose
+# (see terraform/backend/README.md) — uncomment if the team agrees to this:
+# !terraform/backend/terraform.tfstate
+
+# Azure / secrets
+*.pem
+*.key
+.env
+.env.*
+
+# Node (Remix app)
+node_modules/
+build/
+.cache/
+
+# OS / editor noise
+.DS_Store
+.vscode/
+*.swp

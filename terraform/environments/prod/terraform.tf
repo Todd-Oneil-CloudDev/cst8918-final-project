@@ -1,0 +1,14 @@
+terraform {
+  required_version = ">= 1.6"
+
+  backend "azurerm" {
+    key = "prod.app.tfstate"
+  }
+
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 3.100"
+    }
+  }
+}
