@@ -1,0 +1,87 @@
+name: Terraform Plan and TFLint
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: read
+
+env:
+  TF_IN_AUTOMATION: true
+  TF_INPUT: false
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_USE_OIDC: true
+
+jobs:
+  tflint:
+    name: TFLint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up TFLint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: Show TFLint version
+        run: tflint --version
+
+      - name: Initialize TFLint
+        run: tflint --init
+
+      - name: Run TFLint for backend
+        working-directory: terraform/backend
+        run: tflint
+
+      - name: Run TFLint for network
+        working-directory: terraform/network
+        run: tflint
+
+      - name: Run TFLint for test environment
+        working-directory: terraform/environments/test
+        run: tflint
+
+      - name: Run TFLint for production environment
+        working-directory: terraform/environments/prod
+        run: tflint
+
+  terraform-plan:
+    name: Terraform Network Plan
+    runs-on: ubuntu-latest
+    needs: tflint
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure login using OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform init
+        working-directory: terraform/network
+        run: |
+          terraform init \
+            -backend-config=../backend/backend.hcl \
+            -input=false
+
+      - name: Terraform validate
+        working-directory: terraform/network
+        run: terraform validate
+
+      - name: Terraform plan
+        working-directory: terraform/network
+        run: terraform plan -no-color -input=false
