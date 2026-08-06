@@ -23,6 +23,7 @@ terraform.rc
 *.key
 .env
 .env.*
+k8s/**/secret.yaml
 
 # Node (Remix app)
 node_modules/

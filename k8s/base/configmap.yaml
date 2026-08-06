@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: weather-app-config
+data:
+  NODE_ENV: production
+  PORT: "3000"
+  REDIS_HOST: replace-with-redis-hostname
+  REDIS_PORT: "6380"
+  REDIS_TLS: "true"
