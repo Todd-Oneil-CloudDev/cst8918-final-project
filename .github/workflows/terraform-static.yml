@@ -1,0 +1,75 @@
+name: Terraform Static Validation
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  terraform-format:
+    name: Terraform Format Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive terraform
+
+  terraform-validate:
+    name: Validate Terraform Projects
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Find and validate Terraform projects
+        shell: bash
+        run: |
+          set -e
+
+          PROJECT_DIRECTORIES=$(find terraform \
+            -type f \
+            -name "*.tf" \
+            -printf '%h\n' \
+            | sort -u)
+
+          if [ -z "$PROJECT_DIRECTORIES" ]; then
+            echo "No Terraform files were found."
+            exit 1
+          fi
+
+          for directory in $PROJECT_DIRECTORIES; do
+            echo "========================================"
+            echo "Validating: $directory"
+            echo "========================================"
+
+            terraform -chdir="$directory" init \
+              -backend=false \
+              -input=false
+
+            terraform -chdir="$directory" validate
+          done
+
+  terraform-security:
+    name: Terraform Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: terraform
+          soft_fail: false
