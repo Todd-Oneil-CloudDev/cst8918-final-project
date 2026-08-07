@@ -25,3 +25,4 @@ variable "subnet_map" {
     admin = "10.3.0.0/16"
   }
 }
+
