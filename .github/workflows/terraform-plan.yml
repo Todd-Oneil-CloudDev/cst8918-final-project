@@ -84,4 +84,4 @@ jobs:
 
       - name: Terraform plan
         working-directory: terraform/network
-        run: terraform plan -no-color -input=false
+        run: terraform plan -no-color -input=false -lock=false
