@@ -51,3 +51,9 @@ variable "max" {
   description = "max number of nodes supplied by the calling environment, defaults to 1"
   default     = 1
 }
+
+variable "aks_version" {
+  type        = string
+  description = "version supplied by the calling environment, defaults to 1.32"
+  default     = "1.32"
+}
