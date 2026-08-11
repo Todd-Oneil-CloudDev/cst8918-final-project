@@ -10,6 +10,10 @@ output "main_network_id" {
   value = azurerm_virtual_network.main.id
 }
 
+output "main_location" {
+  value = azurerm_virtual_network.main.location
+}
+
 output "subnet_ids" {
   description = "A map of environment name : subnet id e.g. subnet_ids['test']"
   value       = { for env, subnet in azurerm_subnet.subnets : env => subnet.id }
