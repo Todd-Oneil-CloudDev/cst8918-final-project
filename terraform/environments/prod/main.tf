@@ -15,6 +15,7 @@ module "acr" {
   name                = var.acr_name
   resource_group_name = data.terraform_remote_state.network.outputs.main_resource_group_name
   region              = data.terraform_remote_state.network.outputs.main_location
+  sku                 = var.acr_sku
 }
 
 module "aks" {
@@ -29,6 +30,8 @@ module "aks" {
   aks_version         = var.aks_version
   service_cidr        = var.aks_service_cidr
   service_dns_ip      = var.aks_service_dns_ip
+  min                 = var.min
+  max                 = var.max
 }
 
 resource "azurerm_role_assignment" "aks_acr_pull" {
@@ -43,4 +46,5 @@ module "redis" {
   name                = var.redis_name
   resource_group_name = data.terraform_remote_state.network.outputs.main_resource_group_name
   region              = data.terraform_remote_state.network.outputs.main_location
+  sku                 = var.redis_sku
 }
