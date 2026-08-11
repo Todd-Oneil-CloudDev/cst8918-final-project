@@ -59,7 +59,7 @@ variable "aks_version" {
 }
 
 variable "subnet_id" {
-  type = string
+  type        = string
   description = "subnet supplied by the calling environment"
   validation {
     condition     = length(var.subnet_id) > 0

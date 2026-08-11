@@ -53,7 +53,7 @@ variable "aks_version" {
 }
 
 variable "aks_dns_prefix" {
-  type = string
+  type        = string
   description = "dns supplied by the calling environment"
 }
 

@@ -26,7 +26,7 @@ module "aks" {
   region              = data.terraform_remote_state.network.outputs.main_location
   subnet_id           = data.terraform_remote_state.network.outputs.subnet_ids["prod"]
   dns_prefix          = var.aks_dns_prefix
-  aks_version         = var.aks_version 
+  aks_version         = var.aks_version
   service_cidr        = var.aks_service_cidr
   service_dns_ip      = var.aks_service_dns_ip
 }
