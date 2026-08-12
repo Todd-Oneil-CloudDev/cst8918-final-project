@@ -17,6 +17,9 @@ env:
   ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
   ARM_USE_OIDC: true
+  TF_VAR_acr_name: ${{ vars.ACR_NAME }}
+  TF_VAR_aks_version: ${{ vars.AKS_VERSION }}
+  TF_VAR_redis_sku: ${{ vars.REDIS_SKU }}
 
 jobs:
   tflint:
@@ -53,7 +56,7 @@ jobs:
         run: tflint
 
   terraform-plan:
-    name: Terraform Network Plan
+    name: Terraform Plans
     runs-on: ubuntu-latest
     needs: tflint
 
@@ -71,17 +74,45 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Terraform init
+      - name: Plan shared network
         working-directory: terraform/network
         run: |
-          terraform init \
-            -backend-config=../backend/backend.hcl \
-            -input=false
+          terraform init -backend-config=../backend/backend.hcl -backend-config="key=network.tfstate" -input=false
+          terraform validate
+          terraform plan -no-color -input=false -lock=false
 
-      - name: Terraform validate
-        working-directory: terraform/network
-        run: terraform validate
+      - name: Configure test variables
+        run: |
+          echo "TF_VAR_aks_name=${{ vars.TEST_AKS_NAME }}" >> "$GITHUB_ENV"
+          echo "TF_VAR_node_name=testpool" >> "$GITHUB_ENV"
+          echo "TF_VAR_min=1" >> "$GITHUB_ENV"
+          echo "TF_VAR_max=1" >> "$GITHUB_ENV"
+          echo "TF_VAR_aks_dns_prefix=${{ vars.TEST_AKS_NAME }}" >> "$GITHUB_ENV"
+          echo "TF_VAR_aks_service_cidr=10.10.0.0/16" >> "$GITHUB_ENV"
+          echo "TF_VAR_aks_service_dns_ip=10.10.0.10" >> "$GITHUB_ENV"
+          echo "TF_VAR_redis_name=${{ vars.TEST_REDIS_NAME }}" >> "$GITHUB_ENV"
 
-      - name: Terraform plan
-        working-directory: terraform/network
-        run: terraform plan -no-color -input=false -lock=false
+      - name: Plan test infrastructure
+        working-directory: terraform/environments/test
+        run: |
+          terraform init -backend-config=../../backend/backend.hcl -backend-config="key=test.app.tfstate" -input=false
+          terraform validate
+          terraform plan -no-color -input=false -lock=false
+
+      - name: Configure production variables
+        run: |
+          echo "TF_VAR_aks_name=${{ vars.PROD_AKS_NAME }}" >> "$GITHUB_ENV"
+          echo "TF_VAR_node_name=prodpool" >> "$GITHUB_ENV"
+          echo "TF_VAR_min=1" >> "$GITHUB_ENV"
+          echo "TF_VAR_max=3" >> "$GITHUB_ENV"
+          echo "TF_VAR_aks_dns_prefix=${{ vars.PROD_AKS_NAME }}" >> "$GITHUB_ENV"
+          echo "TF_VAR_aks_service_cidr=10.20.0.0/16" >> "$GITHUB_ENV"
+          echo "TF_VAR_aks_service_dns_ip=10.20.0.10" >> "$GITHUB_ENV"
+          echo "TF_VAR_redis_name=${{ vars.PROD_REDIS_NAME }}" >> "$GITHUB_ENV"
+
+      - name: Plan production infrastructure
+        working-directory: terraform/environments/prod
+        run: |
+          terraform init -backend-config=../../backend/backend.hcl -backend-config="key=prod.app.tfstate" -input=false
+          terraform validate
+          terraform plan -no-color -input=false -lock=false
