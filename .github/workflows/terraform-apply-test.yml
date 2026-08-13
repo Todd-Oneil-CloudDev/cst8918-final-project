@@ -1,0 +1,77 @@
+name: Terraform Apply - Test
+
+on:
+  push:
+    branches:
+      - test
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform-apply-test.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: terraform-test
+  cancel-in-progress: false
+
+env:
+  TF_IN_AUTOMATION: true
+  TF_INPUT: false
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_ACCESS_KEY: ${{ secrets.ARM_ACCESS_KEY }}
+  ARM_USE_OIDC: true
+  TF_VAR_acr_name: ${{ secrets.TF_VAR_ACR_NAME }}
+  TF_VAR_aks_name: ${{ secrets.TF_VAR_AKS_NAME }}
+  TF_VAR_node_name: ${{ secrets.TF_VAR_NODE_NAME }}
+  TF_VAR_min: ${{ secrets.TF_VAR_MIN }}
+  TF_VAR_max: ${{ secrets.TF_VAR_MAX }}
+  TF_VAR_aks_version: ${{ secrets.TF_VAR_AKS_VERSION }}
+  TF_VAR_aks_dns_prefix: ${{ secrets.TF_VAR_AKS_DNS_PREFIX }}
+  TF_VAR_aks_service_cidr: "10.10.0.0/16"
+  TF_VAR_aks_service_dns_ip: ${{ secrets.TF_VAR_AKS_SERVICE_DNS_IP }}
+  TF_VAR_redis_name: ${{ secrets.TF_VAR_REDIS_NAME }}
+
+jobs:
+  plan-and-apply:
+    name: Plan and Apply Test Infrastructure
+    runs-on: ubuntu-latest
+    environment: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure login using OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform init
+        working-directory: terraform/environments/test
+        run: |
+          terraform init \
+            -backend-config=../../backend/backend.hcl \
+            -backend-config="key=test.app.tfstate" \
+            -input=false
+
+      - name: Terraform validate
+        working-directory: terraform/environments/test
+        run: terraform validate
+
+      - name: Terraform plan
+        working-directory: terraform/environments/test
+        run: terraform plan -no-color -input=false -out=tfplan
+
+      - name: Terraform apply
+        working-directory: terraform/environments/test
+        run: terraform apply -input=false -auto-approve tfplan
