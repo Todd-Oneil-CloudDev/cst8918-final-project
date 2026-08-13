@@ -111,7 +111,7 @@ jobs:
         id: tf-outputs
         working-directory: terraform/environments/test
         run: |
-          echo "rg_name=$(terraform output -raw resource_group_name)" >> "$GITHUB_OUTPUT"
+          echo "rg_name=$(terraform output -raw resource_group)" >> "$GITHUB_OUTPUT"
           echo "redis_host=$(terraform output -raw test_redis_hostname)" >> "$GITHUB_OUTPUT"
 
       - name: Get Redis key
@@ -126,7 +126,6 @@ jobs:
         run: az acr login --name ${{ secrets.TF_VAR_ACR_NAME}}
 
       - name: Build and push image
-        working-directory: app
         run: |
           docker build -t ${{ secrets.TF_VAR_ACR_NAME }}.azurecr.io/weather-app:${{ github.sha }} .
           docker push ${{ secrets.TF_VAR_ACR_NAME }}.azurecr.io/weather-app:${{ github.sha }}
@@ -155,3 +154,27 @@ jobs:
         run: |
           kubectl apply -k k8s/test
           kubectl rollout status deployment/weather-app -n weather-test
+
+      - name: Collect rollout diagnostics
+        if: failure()
+        run: |
+          echo "=== Kubernetes resources ==="
+          kubectl get deployment,pods,service -n weather-test -o wide || true
+
+          echo "=== Recent namespace events ==="
+          kubectl get events -n weather-test \
+            --sort-by=.metadata.creationTimestamp || true
+
+          echo "=== Deployment details ==="
+          kubectl describe deployment weather-app -n weather-test || true
+
+          echo "=== Pod details ==="
+          kubectl describe pods -n weather-test || true
+
+          echo "=== Current container logs ==="
+          kubectl logs deployment/weather-app -n weather-test \
+            --all-containers=true --tail=200 || true
+
+          echo "=== Previous container logs ==="
+          kubectl logs deployment/weather-app -n weather-test \
+            --all-containers=true --previous --tail=200 || true
