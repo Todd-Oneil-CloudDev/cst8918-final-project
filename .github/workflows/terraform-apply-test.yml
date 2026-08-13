@@ -49,9 +49,6 @@ jobs:
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Set up kustomize
-        uses: imranismail/setup-kustomize@v2
-
       - name: Azure login using OIDC
         uses: azure/login@v2
         with:
@@ -83,8 +80,33 @@ jobs:
     name: Deploy to Kubernetes
     runs-on: ubuntu-latest
     environment: test
+    needs: plan-and-apply
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Set up kustomize
+        uses: imranismail/setup-kustomize@v2
+
+      - name: Azure login using OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform init
+        working-directory: terraform/environments/test
+        run: |
+          terraform init \
+            -backend-config=../../backend/backend.hcl \
+            -backend-config="key=test.app.tfstate" \
+            -input=false
+
       - name: Get Terraform outputs
         id: tf-outputs
         working-directory: terraform/environments/test
