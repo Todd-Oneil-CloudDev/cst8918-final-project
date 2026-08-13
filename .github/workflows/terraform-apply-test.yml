@@ -118,7 +118,7 @@ jobs:
         id: redis-key
         working-directory: terraform/environments/test
         run: |
-          KEY=$(terraform output -raw redis_primary_access_key)
+          KEY=$(terraform output -raw test_redis_primary_access_key)
           echo "::add-mask::$KEY"
           echo "key=$KEY" >> "$GITHUB_OUTPUT"
 
