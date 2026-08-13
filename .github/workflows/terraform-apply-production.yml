@@ -1,0 +1,196 @@
+name: Terraform Apply - Production
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "terraform/**"
+      - "app/**"
+      - "k8s/**"
+      - "Dockerfile"
+      - "package.json"
+      - "package-lock.json"
+      - "remix.config.js"
+      - "remix.env.d.ts"
+      - "tsconfig.json"
+      - ".github/workflows/terraform-apply-production.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: terraform-production
+  cancel-in-progress: false
+
+env:
+  TF_IN_AUTOMATION: true
+  TF_INPUT: false
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_ACCESS_KEY: ${{ secrets.ARM_ACCESS_KEY }}
+  ARM_USE_OIDC: true
+  TF_VAR_acr_name: ${{ secrets.TF_VAR_ACR_NAME }}
+  TF_VAR_aks_name: ${{ secrets.TF_VAR_AKS_NAME }}
+  TF_VAR_node_name: ${{ secrets.TF_VAR_NODE_NAME }}
+  TF_VAR_min: ${{ secrets.TF_VAR_MIN }}
+  TF_VAR_max: ${{ secrets.TF_VAR_MAX }}
+  TF_VAR_aks_version: ${{ secrets.TF_VAR_AKS_VERSION }}
+  TF_VAR_aks_dns_prefix: ${{ secrets.TF_VAR_AKS_DNS_PREFIX }}
+  TF_VAR_aks_service_cidr: ${{ secrets.TF_VAR_AKS_SERVICE_CIDR }}
+  TF_VAR_aks_service_dns_ip: ${{ secrets.TF_VAR_AKS_SERVICE_DNS_IP }}
+  TF_VAR_redis_name: ${{ secrets.TF_VAR_REDIS_NAME }}
+
+jobs:
+  plan-and-apply:
+    name: Plan and Apply Production Infrastructure
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure login using OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform init
+        working-directory: terraform/environments/prod
+        run: |
+          terraform init \
+            -backend-config=../../backend/backend.hcl \
+            -backend-config="key=prod.app.tfstate" \
+            -input=false
+
+      - name: Terraform validate
+        working-directory: terraform/environments/prod
+        run: terraform validate
+
+      - name: Terraform plan
+        working-directory: terraform/environments/prod
+        run: terraform plan -no-color -input=false -out=tfplan
+
+      - name: Terraform apply
+        working-directory: terraform/environments/prod
+        run: terraform apply -input=false -auto-approve tfplan
+
+  deploy-code:
+    name: Deploy to Production Kubernetes
+    runs-on: ubuntu-latest
+    environment: production
+    needs: plan-and-apply
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Set up kustomize
+        uses: imranismail/setup-kustomize@v2
+
+      - name: Azure login using OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform init
+        working-directory: terraform/environments/prod
+        run: |
+          terraform init \
+            -backend-config=../../backend/backend.hcl \
+            -backend-config="key=prod.app.tfstate" \
+            -input=false
+
+      - name: Get production values
+        id: production-values
+        working-directory: terraform/environments/prod
+        run: |
+          RESOURCE_GROUP=$(az aks list \
+            --query "[?name=='${TF_VAR_aks_name}'].resourceGroup | [0]" \
+            --output tsv)
+
+          if [ -z "$RESOURCE_GROUP" ]; then
+            echo "Unable to find the production AKS resource group."
+            exit 1
+          fi
+
+          echo "rg_name=$RESOURCE_GROUP" >> "$GITHUB_OUTPUT"
+          echo "redis_host=$(terraform output -raw test_redis_hostname)" >> "$GITHUB_OUTPUT"
+
+      - name: Get Redis key
+        id: redis-key
+        working-directory: terraform/environments/prod
+        run: |
+          KEY=$(terraform output -raw test_redis_primary_access_key)
+          echo "::add-mask::$KEY"
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to ACR
+        run: az acr login --name "${{ secrets.TF_VAR_ACR_NAME }}"
+
+      - name: Build and push image
+        run: |
+          IMAGE="${{ secrets.TF_VAR_ACR_NAME }}.azurecr.io/weather-app:${{ github.sha }}"
+          docker build --tag "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group "${{ steps.production-values.outputs.rg_name }}" \
+            --name "${{ secrets.TF_VAR_AKS_NAME }}" \
+            --overwrite-existing
+
+      - name: Ensure namespace exists
+        run: kubectl apply -f k8s/prod/namespace.yaml
+
+      - name: Create or update application secrets
+        env:
+          WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
+          REDIS_PASSWORD: ${{ steps.redis-key.outputs.key }}
+        run: |
+          kubectl create secret generic weather-app-secrets \
+            --namespace=weather-prod \
+            --from-literal=WEATHER_API_KEY="$WEATHER_API_KEY" \
+            --from-literal=REDIS_PASSWORD="$REDIS_PASSWORD" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Update production overlay
+        working-directory: k8s/prod
+        run: |
+          kustomize edit set image weather-app=${{ secrets.TF_VAR_ACR_NAME }}.azurecr.io/weather-app:${{ github.sha }}
+          sed -i "s/replace-with-prod-redis-hostname/${{ steps.production-values.outputs.redis_host }}/" kustomization.yaml
+
+      - name: Deploy to production AKS
+        run: |
+          kubectl apply -k k8s/prod
+          kubectl rollout status deployment/weather-app \
+            --namespace weather-prod \
+            --timeout=10m
+
+      - name: Collect rollout diagnostics
+        if: failure()
+        run: |
+          kubectl get deployment,pods,service -n weather-prod -o wide || true
+          kubectl get events -n weather-prod \
+            --sort-by=.metadata.creationTimestamp || true
+          kubectl describe deployment weather-app -n weather-prod || true
+          kubectl describe pods -n weather-prod || true
+          kubectl logs deployment/weather-app -n weather-prod \
+            --all-containers=true --tail=200 || true
+          kubectl logs deployment/weather-app -n weather-prod \
+            --all-containers=true --previous --tail=200 || true
