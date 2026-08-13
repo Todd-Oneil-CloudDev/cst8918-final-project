@@ -111,7 +111,7 @@ jobs:
         id: tf-outputs
         working-directory: terraform/environments/test
         run: |
-          echo "rg_name=$(terraform output -raw resource_group_name)" >> "$GITHUB_OUTPUT"
+          echo "rg_name=$(terraform output -raw resource_group)" >> "$GITHUB_OUTPUT"
           echo "redis_host=$(terraform output -raw test_redis_hostname)" >> "$GITHUB_OUTPUT"
 
       - name: Get Redis key
@@ -126,7 +126,6 @@ jobs:
         run: az acr login --name ${{ secrets.TF_VAR_ACR_NAME}}
 
       - name: Build and push image
-        working-directory: app
         run: |
           docker build -t ${{ secrets.TF_VAR_ACR_NAME }}.azurecr.io/weather-app:${{ github.sha }} .
           docker push ${{ secrets.TF_VAR_ACR_NAME }}.azurecr.io/weather-app:${{ github.sha }}
