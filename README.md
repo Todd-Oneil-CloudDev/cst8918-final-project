@@ -12,7 +12,7 @@ The application code and infrastructure code are maintained in the same GitHub r
 
 | Team Member | GitHub Profile | Contributions |
 | --- | --- | --- |
-| Todd O'Neil | [GitHub Profile](https://github.com/REPLACE-WITH-TODD-USERNAME) | _To be completed by Todd._ |
+| Todd O'Neil | [GitHub Profile](https://github.com/Todd-Oneil-CloudDev) | Developed all terraform infrastructure code, separated network and remote state into standalone terraform projects to enforce independance.  Created AKS, ACR, and REDIS modules to be envoked and reused by environments prod and test.  Prod and test environement terraform projects use .tfvars files to assign values to variables at runtime.  Configured github repo, repo secrets, and rulesets. |
 | Xinyi Zhao | [GitHub Profile](https://github.com/XinyiZhao-cloud) | Developed the Remix Weather Application and OpenWeather API integration; implemented Redis caching with a ten-minute TTL and an in-memory fallback; created the multi-stage Dockerfile; created the reusable Kubernetes base and test/production Kustomize overlays; wrote the application deployment guide covering local development, Docker, ACR, AKS, Redis, Kubernetes deployment, verification, and troubleshooting; participated in pull-request review and integration. |
 
 | Sara Mirzaei | [GitHub Profile](https://github.com/REPLACE-WITH-SARA-USERNAME) | _To be completed by Sara._ |
