@@ -33,3 +33,8 @@ output "test_acr_pull_principal" {
 output "test_aks_kubelet_object_id" {
   value = module.aks.kubelet_object_id
 }
+
+output "resource_group" {
+  value = data.terraform_remote_state.network.outputs.main_resource_group_name
+}
+

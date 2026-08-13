@@ -49,6 +49,9 @@ jobs:
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
 
+      - name: Set up kustomize
+        uses: imranismail/setup-kustomize@v2
+
       - name: Azure login using OIDC
         uses: azure/login@v2
         with:
@@ -75,3 +78,58 @@ jobs:
       - name: Terraform apply
         working-directory: terraform/environments/test
         run: terraform apply -input=false -auto-approve tfplan
+
+  deploy-code:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    environment: test
+
+    steps:
+      - name: Get Terraform outputs
+        id: tf-outputs
+        working-directory: terraform/environments/test
+        run: |
+          echo "rg_name=$(terraform output -raw resource_group_name)" >> "$GITHUB_OUTPUT"
+          echo "redis_host=$(terraform output -raw test_redis_hostname)" >> "$GITHUB_OUTPUT"
+
+      - name: Get Redis key
+        id: redis-key
+        working-directory: terraform/environments/test
+        run: |
+          KEY=$(terraform output -raw redis_primary_access_key)
+          echo "::add-mask::$KEY"
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to ACR
+        run: az acr login --name ${{ secrets.TF_VAR_ACR_NAME}}
+
+      - name: Build and push image
+        working-directory: app
+        run: |
+          docker build -t ${{ secrets.TF_VAR_ACR_NAME }}.azurecr.io/weather-app:${{ github.sha }} .
+          docker push ${{ secrets.TF_VAR_ACR_NAME }}.azurecr.io/weather-app:${{ github.sha }}
+      
+      - name: Get AKS credentials
+        run: az aks get-credentials --resource-group ${{ steps.tf-outputs.outputs.rg_name }} --name ${{ secrets.TF_VAR_AKS_NAME }} --overwrite-existing
+
+      - name: Ensure namespace exists
+        run: kubectl apply -f k8s/test/namespace.yaml
+
+      - name: Create/update app secrets
+        run: |
+          kubectl create secret generic weather-app-secrets \
+            --namespace=weather-test \
+            --from-literal=WEATHER_API_KEY=${{ secrets.WEATHER_API_KEY }} \
+            --from-literal=REDIS_PASSWORD=${{ steps.redis-key.outputs.key }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Update kustomize overlay with runtime values
+        working-directory: k8s/test
+        run: |
+          kustomize edit set image weather-app=${{ secrets.TF_VAR_ACR_NAME }}.azurecr.io/weather-app:${{ github.sha }}
+          sed -i "s/replace-with-test-redis-hostname/${{ steps.tf-outputs.outputs.redis_host }}/" kustomization.yaml
+
+      - name: Deploy to AKS
+        run: |
+          kubectl apply -k k8s/test
+          kubectl rollout status deployment/weather-app -n weather-test
