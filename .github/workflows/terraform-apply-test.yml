@@ -155,6 +155,54 @@ jobs:
           kubectl apply -k k8s/test
           kubectl rollout status deployment/weather-app -n weather-test
 
+      - name: Verify test deployment
+        run: |
+          echo "=== Test workload status ==="
+          kubectl get pods,service,deployment \
+            --namespace weather-test \
+            --output wide
+
+          echo "=== Deployment rollout ==="
+          kubectl rollout status deployment/weather-app \
+            --namespace weather-test \
+            --timeout=180s
+
+      - name: Verify application is reachable
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for attempt in {1..12}; do
+            EXTERNAL_ADDRESS=$(kubectl get service weather-app \
+              --namespace weather-test \
+              --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+            if [ -z "$EXTERNAL_ADDRESS" ]; then
+              EXTERNAL_ADDRESS=$(kubectl get service weather-app \
+                --namespace weather-test \
+                --output jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+            fi
+
+            if [ -n "$EXTERNAL_ADDRESS" ]; then
+              echo "Testing weather application at http://${EXTERNAL_ADDRESS}"
+              if curl --fail --silent --show-error \
+                --max-time 15 \
+                "http://${EXTERNAL_ADDRESS}" \
+                > /dev/null; then
+                echo "Weather application is reachable."
+                exit 0
+              fi
+            else
+              echo "The LoadBalancer does not have an external address yet."
+            fi
+
+            echo "Attempt ${attempt}/12 failed; retrying in 10 seconds."
+            sleep 10
+          done
+
+          echo "Weather application did not become reachable."
+          exit 1
+
       - name: Collect rollout diagnostics
         if: failure()
         run: |
