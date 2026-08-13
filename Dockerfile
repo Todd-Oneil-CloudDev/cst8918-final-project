@@ -37,7 +37,9 @@ COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_m
 COPY --from=build --chown=node:node /app/build ./build
 COPY --chown=node:node package.json ./package.json
 
-USER node
+# The official Node Alpine image defines the node user and group as UID/GID
+# 1000. Kubernetes requires a numeric identity to verify runAsNonRoot.
+USER 1000:1000
 
 EXPOSE 3000
 
