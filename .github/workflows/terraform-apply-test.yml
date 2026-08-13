@@ -6,6 +6,14 @@ on:
       - test
     paths:
       - "terraform/**"
+      - "app/**"
+      - "k8s/**"
+      - "Dockerfile"
+      - "package.json"
+      - "package-lock.json"
+      - "remix.config.js"
+      - "remix.env.d.ts"
+      - "tsconfig.json"
       - ".github/workflows/terraform-apply-test.yml"
   workflow_dispatch:
 
