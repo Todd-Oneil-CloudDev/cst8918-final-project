@@ -1,0 +1,7 @@
+{
+  "name": "branch-test",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "repo:Todd-Oneil-CloudDev@255024547/cst8918-final-project@1317807862:ref:refs/heads/test",
+  "description": "CST8918 Final Project - GitHub Actions",
+  "audiences": ["api://AzureADTokenExchange"]
+}

@@ -32,7 +32,7 @@ env:
   TF_VAR_max: ${{ secrets.TF_VAR_MAX }}
   TF_VAR_aks_version: ${{ secrets.TF_VAR_AKS_VERSION }}
   TF_VAR_aks_dns_prefix: ${{ secrets.TF_VAR_AKS_DNS_PREFIX }}
-  TF_VAR_aks_service_cidr: "10.10.0.0/16"
+  TF_VAR_aks_service_cidr: ${{ secrets.TF_VAR_AKS_SERVICE_CIDR }}
   TF_VAR_aks_service_dns_ip: ${{ secrets.TF_VAR_AKS_SERVICE_DNS_IP }}
   TF_VAR_redis_name: ${{ secrets.TF_VAR_REDIS_NAME }}
 
