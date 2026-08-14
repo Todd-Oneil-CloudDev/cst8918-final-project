@@ -437,8 +437,8 @@ Use the following deployment order:
 Example backend initialization for the network project:
 
 ```bash
-terraform -chdir=terraform/network init \
-  -backend-config=../backend/backend.hcl
+terraform init && terraform plan --out=env.plan && terraform apply
+-backend-config=../backend/backend.hcl env.plan
 ```
 
 The test and production environment projects must also be initialized using the shared backend configuration.
@@ -485,12 +485,6 @@ GitHub Actions:
 4. Validate the image without granting the PR identity write access.
 5. Push the commit-SHA image to ACR after merge through the protected test or
    production workflow.
-
-Example image format:
-
-```text
-<acr-login-server>/weather-app:<commit-sha>
-```
 
 This separation keeps pull-request credentials read-only while ensuring only
 reviewed commits are published to ACR.
@@ -570,30 +564,6 @@ Never commit:
 - Real Kubernetes Secret manifests
 - Azure credentials
 
-## Verification
-
-Before submission, verify all of the following:
-
-- Terraform formatting passes
-- Terraform validation passes
-- tfsec passes
-- TFLint passes
-- Terraform plan succeeds
-- Terraform apply succeeds after merging infrastructure changes
-- The shared network is deployed
-- Test AKS uses one `Standard_B2s` node
-- Production AKS scales from one to three `Standard_B2s` nodes
-- Both AKS clusters use Kubernetes version `1.32`
-- Test and production use their correct subnets
-- AKS kubelet identities receive the `AcrPull` role
-- AKS can pull the commit-SHA image from ACR
-- Redis accepts TLS connections on port `6380`
-- The test application is deployed for application pull requests
-- The production application is deployed after merge to `main`
-- Kubernetes pods become ready
-- The LoadBalancer receives an external IP
-- The Weather Application loads successfully
-- Application logs show a Redis cache write and cache hit
 
 ## GitHub Actions Workflow Evidence
 
@@ -615,6 +585,10 @@ Before submission, verify all of the following:
 
 ![Successful test Terraform and AKS deployment](screenshots/test-deployment-success.png)
 
+#### Terraform Output
+
+![production terraform output](screenshots/test-terraform-outputs.png)
+
 ### Production Environment
 
 #### Terraform Deploy
@@ -624,6 +598,10 @@ Before submission, verify all of the following:
 #### Application Deploy
 
 ![Successful production application deployment](screenshots/prod-code-deploy.png)
+
+#### Terraform Output
+
+![production terraform output](screenshots/prod-terraform-outputs.png)
 
 ## Weather Application and Redis Evidence
 
@@ -665,28 +643,3 @@ The workflow sent repeated requests to the production application and found
 Pods, confirming that the shared Azure Cache for Redis was in use.
 
 ![Successful production Redis cache-hit verification](screenshots/production-deployment-redis-success.png)
-
-## Known Limitations and Remaining Work
-
-The CI/CD workflows, commit-SHA image publication, test deployment, production
-deployment, rollout verification, and workflow evidence are complete.
-
-Before submission, the team must still confirm that all collaborators and the
-professor have access, verify the final `main` ruleset and required checks, and
-coordinate Azure resource cleanup after grading evidence has been collected.
-
-## Cleanup
-
-After the project has been tested and submitted, delete the Azure resources to avoid unnecessary charges and a possible grade penalty.
-
-Destroy resources in the reverse order of creation:
-
-1. Remove the Kubernetes application resources.
-2. Destroy the production Terraform environment.
-3. Destroy the test Terraform environment.
-4. Destroy the shared network.
-5. Destroy the Terraform backend last.
-
-The backend must be removed last because it stores the Terraform state required to manage the other resources.
-
-Always confirm the active Azure subscription, Terraform state, and target environment before running a destroy command.
