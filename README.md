@@ -271,7 +271,9 @@ The module exports:
 - Identity information
 - Kubelet object ID
 
-The project specification requires Kubernetes version `1.35` for both test and production clusters.
+The original project specification listed Kubernetes version `1.32`. Because
+that version is deprecated and unavailable for this Azure deployment, both the
+test and production AKS clusters use the supported Kubernetes version `1.35`.
 
 
 ### Test AKS Environment
