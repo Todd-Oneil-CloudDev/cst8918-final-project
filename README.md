@@ -274,9 +274,8 @@ The module exports:
 - Identity information
 - Kubelet object ID
 
-The project specification requires Kubernetes version `1.32` for both test and production clusters.
+The project specification requires Kubernetes version `1.35` for both test and production clusters.
 
-> Before final deployment, confirm that the environment configuration supplies Kubernetes version `1.32`. The current environment variable defaults must be reviewed to ensure they do not override this requirement.
 
 ### Test AKS Environment
 
@@ -306,8 +305,6 @@ VM size: Standard_B2s
 Kubernetes version: 1.32
 Subnet: prod
 ```
-
-> Before final deployment, confirm that the production Terraform variables set the maximum node count to `3`.
 
 The production environment also creates:
 
@@ -501,7 +498,7 @@ Example image format:
 
 ### Test Deployment
 
-When application code changes in a pull request targeting `main`, the application must be deployed to the test AKS cluster.
+When application code changes in a pull request targeting `test`, the application must be deployed to the test AKS cluster.
 
 The workflow must:
 
@@ -512,7 +509,6 @@ The workflow must:
 - Deploy the test Kubernetes overlay
 - Verify the application rollout
 
-> Status: The automated test deployment workflow must be confirmed or completed before final submission.
 
 ### Production Deployment
 
@@ -527,7 +523,6 @@ The workflow must:
 - Deploy the production Kubernetes overlay
 - Verify the application rollout
 
-> Status: The automated production deployment workflow must be confirmed or completed before final submission.
 
 ## GitHub Collaboration
 
@@ -546,7 +541,6 @@ The repository must meet the following collaboration requirements:
 - Each team member creates pull requests to `main`
 - Work is divided into small, reviewable pull requests
 
-> Confirm these settings directly in GitHub before submission because repository collaboration settings cannot be verified from the local files alone.
 
 ## Security
 
@@ -601,31 +595,23 @@ Before submission, verify all of the following:
 - Application logs show a Redis cache write and cache hit
 
 ## GitHub Actions Workflow Evidence
+### Test Environment
+#### Terraform Deploy
 
-Include a screenshot showing the completed GitHub Actions workflows in the repository.
 
-The screenshot should show successful runs for:
+#### Application Deploy
 
-- Terraform static analysis
-- TFLint and Terraform plan
-- Terraform apply
-- Docker image build and push
-- Test AKS deployment
-- Production AKS deployment
+### Prod Environment
+#### Terraform Deploy
+![prod-terraform](./screenshots/prod-terraform-deploy.png)
 
-Add the final screenshot here:
-
-```markdown
-![Completed GitHub Actions workflows](docs/images/github-actions-workflows.png)
-```
-
-> Replace this placeholder with the real screenshot path before submission.
+#### Application Deploy
+![prod-app](./screenshots/prod-code-deploy.png)
 
 ## Known Limitations and Remaining Work
 
 Before final submission:
 
-- Confirm Kubernetes version `1.32` in test and production.
 - Configure production AKS with a minimum of one node and maximum of three nodes.
 - Confirm or complete the Terraform apply workflow.
 - Complete the conditional Docker build and ACR push workflow.
@@ -638,8 +624,6 @@ Before final submission:
 - Add links to all team members’ GitHub profiles.
 - Complete the other team members’ contribution descriptions.
 - Confirm the professor and all team members are repository collaborators.
-- Confirm the `main` branch ruleset and required checks.
-- Add the successful GitHub Actions screenshot.
 - Add final test and production deployment evidence.
 
 ## Cleanup
