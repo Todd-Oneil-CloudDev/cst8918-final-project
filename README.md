@@ -271,7 +271,7 @@ The module exports:
 - Identity information
 - Kubelet object ID
 
-The project specification requires Kubernetes version `1.35` for both test and production clusters.
+The project specification requires Kubernetes version `1.32` for both test and production clusters.
 
 
 ### Test AKS Environment

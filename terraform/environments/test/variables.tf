@@ -48,8 +48,8 @@ variable "max" {
 
 variable "aks_version" {
   type        = string
-  description = "version supplied by the calling environment, defaults to 1.33"
-  default     = "1.35"
+  description = "version supplied by the calling environment, defaults to 1.32"
+  default     = "1.32"
 }
 
 variable "aks_dns_prefix" {
