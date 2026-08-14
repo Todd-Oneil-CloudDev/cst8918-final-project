@@ -625,6 +625,45 @@ Before submission, verify all of the following:
 
 ![Successful production application deployment](screenshots/prod-code-deploy.png)
 
+## Weather Application and Redis Evidence
+
+### Local Weather Application
+
+The Remix Weather Application successfully retrieved and displayed current
+weather data for Algonquin College's Woodroffe Campus during local testing.
+
+![Remix Weather Application running locally](screenshots/local-weather-app-running.png)
+
+### Production Weather Application
+
+The production application was deployed to AKS and accessed through the public
+IP address assigned to its Azure LoadBalancer Service.
+
+![Production Remix Weather Application running through the Azure LoadBalancer](screenshots/production-weather-app-running.png)
+
+### Production AKS Rollout
+
+The production Deployment reached `2/2` ready and available replicas, the Pods
+were running without restarts, and the commit-SHA-tagged image was successfully
+rolled out from ACR.
+
+![Successful production AKS rollout and workload status](screenshots/production-aks-rollout-success.png)
+
+### Production Reachability
+
+The deployment workflow obtained the LoadBalancer address and confirmed that
+the production Weather Application returned a successful HTTP response.
+
+![Successful production Weather Application reachability check](screenshots/production-app-reachable.png)
+
+### Redis Cache Verification
+
+The workflow sent repeated requests to the production application and found
+`Redis cache hit` entries in the logs of the production Weather Application
+Pods, confirming that the shared Azure Cache for Redis was in use.
+
+![Successful production Redis cache-hit verification](screenshots/production-deployment-redis-success.png)
+
 ## Known Limitations and Remaining Work
 
 The CI/CD workflows, commit-SHA image publication, test deployment, production
