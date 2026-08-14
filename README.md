@@ -599,21 +599,21 @@ Before submission, verify all of the following:
 
 ### Static Terraform Validation
 
-![Successful Terraform formatting, validation, and tfsec jobs](docs/images/terraform-static-validation.png)
+![Successful Terraform formatting, validation, and tfsec jobs](screenshots/terraform-static-validation.png)
 
 ### Pull Request Plan and TFLint
 
-![Successful Terraform plan and TFLint jobs](docs/images/terraform-plan-tflint.png)
+![Successful Terraform plan and TFLint jobs](screenshots/terraform-plan-tflint.png)
 
 ### Docker Pull Request Validation
 
-![Successful Docker PR image build](docs/images/docker-pr-validation.png)
+![Successful Docker PR image build](screenshots/docker-pr-validation.png)
 
 ### Test Environment
 
 #### Terraform and Application Deployment
 
-![Successful test Terraform and AKS deployment](docs/images/test-deployment-success.png)
+![Successful test Terraform and AKS deployment](screenshots/test-deployment-success.png)
 
 ### Production Environment
 
