@@ -182,6 +182,99 @@ jobs:
             --namespace weather-prod \
             --timeout=10m
 
+      - name: Verify production deployment
+        run: |
+          echo "=== Production workload status ==="
+          kubectl get pods,service,deployment \
+            --namespace weather-prod \
+            --output wide
+
+          echo "=== Deployment rollout ==="
+          kubectl rollout status deployment/weather-app \
+            --namespace weather-prod \
+            --timeout=180s
+
+      - name: Verify production application is reachable
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for attempt in {1..12}; do
+            EXTERNAL_ADDRESS=$(kubectl get service weather-app \
+              --namespace weather-prod \
+              --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+            if [ -z "$EXTERNAL_ADDRESS" ]; then
+              EXTERNAL_ADDRESS=$(kubectl get service weather-app \
+                --namespace weather-prod \
+                --output jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+            fi
+
+            if [ -n "$EXTERNAL_ADDRESS" ]; then
+              echo "Testing production weather application at http://${EXTERNAL_ADDRESS}"
+              if curl --fail --silent --show-error \
+                --max-time 15 \
+                "http://${EXTERNAL_ADDRESS}" \
+                > /dev/null; then
+                echo "Production weather application is reachable."
+                exit 0
+              fi
+            else
+              echo "The LoadBalancer does not have an external address yet."
+            fi
+
+            echo "Attempt ${attempt}/12 failed; retrying in 10 seconds."
+            sleep 10
+          done
+
+          echo "Production weather application did not become reachable."
+          exit 1
+
+      - name: Verify Redis caching
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          EXTERNAL_ADDRESS=$(kubectl get service weather-app \
+            --namespace weather-prod \
+            --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+          if [ -z "$EXTERNAL_ADDRESS" ]; then
+            EXTERNAL_ADDRESS=$(kubectl get service weather-app \
+              --namespace weather-prod \
+              --output jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          fi
+
+          if [ -z "$EXTERNAL_ADDRESS" ]; then
+            echo "The LoadBalancer does not have an external address."
+            exit 1
+          fi
+
+          echo "Sending two requests to verify the shared Redis cache."
+          curl --fail --silent --show-error --max-time 15 \
+            "http://${EXTERNAL_ADDRESS}" > /dev/null
+          curl --fail --silent --show-error --max-time 15 \
+            "http://${EXTERNAL_ADDRESS}" > /dev/null
+
+          for attempt in {1..6}; do
+            if kubectl logs \
+              --namespace weather-prod \
+              --selector app.kubernetes.io/name=weather-app \
+              --all-containers=true \
+              --since=5m \
+              --prefix=true \
+              | grep -F "Redis cache hit:"; then
+              echo "Redis caching verified successfully."
+              exit 0
+            fi
+
+            echo "Waiting for Redis cache evidence (${attempt}/6)."
+            sleep 5
+          done
+
+          echo "No Redis cache hit was found in the application logs."
+          exit 1
+
       - name: Collect rollout diagnostics
         if: failure()
         run: |
