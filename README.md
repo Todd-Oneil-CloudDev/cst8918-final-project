@@ -636,10 +636,12 @@ weather data for Algonquin College's Woodroffe Campus during local testing.
 
 ### Production Weather Application
 
-The production application was deployed to AKS and accessed through the public
-IP address assigned to its Azure LoadBalancer Service.
+The production application was deployed to AKS and successfully opened in a
+web browser through the external IP address assigned to the production Azure
+LoadBalancer Service. This screenshot shows the application running in the
+production environment rather than on localhost.
 
-![Production Remix Weather Application running through the Azure LoadBalancer](screenshots/production-weather-app-running.png)
+![Production Remix Weather Application accessed through the LoadBalancer external IP](screenshots/production-weather-app-running.png)
 
 ### Production AKS Rollout
 
