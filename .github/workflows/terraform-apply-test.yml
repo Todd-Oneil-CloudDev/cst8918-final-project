@@ -6,6 +6,14 @@ on:
       - test
     paths:
       - "terraform/**"
+      - "app/**"
+      - "k8s/**"
+      - "Dockerfile"
+      - "package.json"
+      - "package-lock.json"
+      - "remix.config.js"
+      - "remix.env.d.ts"
+      - "tsconfig.json"
       - ".github/workflows/terraform-apply-test.yml"
   workflow_dispatch:
 
@@ -201,6 +209,51 @@ jobs:
           done
 
           echo "Weather application did not become reachable."
+          exit 1
+
+      - name: Verify Redis caching
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          EXTERNAL_ADDRESS=$(kubectl get service weather-app \
+            --namespace weather-test \
+            --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+          if [ -z "$EXTERNAL_ADDRESS" ]; then
+            EXTERNAL_ADDRESS=$(kubectl get service weather-app \
+              --namespace weather-test \
+              --output jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          fi
+
+          if [ -z "$EXTERNAL_ADDRESS" ]; then
+            echo "The LoadBalancer does not have an external address."
+            exit 1
+          fi
+
+          echo "Sending two requests to verify the shared Redis cache."
+          curl --fail --silent --show-error --max-time 15 \
+            "http://${EXTERNAL_ADDRESS}" > /dev/null
+          curl --fail --silent --show-error --max-time 15 \
+            "http://${EXTERNAL_ADDRESS}" > /dev/null
+
+          for attempt in {1..6}; do
+            if kubectl logs \
+              --namespace weather-test \
+              --selector app.kubernetes.io/name=weather-app \
+              --all-containers=true \
+              --since=5m \
+              --prefix=true \
+              | grep -F "Redis cache hit:"; then
+              echo "Redis caching verified successfully."
+              exit 0
+            fi
+
+            echo "Waiting for Redis cache evidence (${attempt}/6)."
+            sleep 5
+          done
+
+          echo "No Redis cache hit was found in the application logs."
           exit 1
 
       - name: Collect rollout diagnostics
