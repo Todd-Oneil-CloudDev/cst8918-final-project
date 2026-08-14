@@ -1,0 +1,45 @@
+name: Docker PR Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+      - test
+    paths:
+      - "app/**"
+      - "Dockerfile"
+      - "package.json"
+      - "package-lock.json"
+      - "remix.config.js"
+      - "remix.env.d.ts"
+      - "tsconfig.json"
+      - ".github/workflows/docker-pr-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Weather Application Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build commit image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: weather-app:${{ github.event.pull_request.head.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
