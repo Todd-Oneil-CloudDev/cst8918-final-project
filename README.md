@@ -460,33 +460,34 @@ Every push to any branch runs:
 
 ### Pull Request Validation
 
-Pull requests targeting `main` run:
+Pull requests targeting `main` or `test` run:
 
 - TFLint
-- Terraform plan
+- A read-only Terraform plan for the shared network
 
-The current plan workflow covers the shared network. The test and production Terraform projects should also be included where required so that AKS, ACR, and Redis changes are visible during pull-request review.
+Application-related pull requests also build the Weather Application container
+image and tag it with the pull-request commit SHA. The PR identity is read-only,
+so image publication is deferred to the protected environment workflows after
+merge.
 
 ### Infrastructure Deployment
 
-The project specification requires infrastructure changes to run:
-
-```text
-terraform apply
-```
-
-after a pull request is approved and merged into `main`.
-
-> Status: The required Terraform apply workflow must be confirmed or completed before final submission.
+After review and merge, protected workflows run Terraform plan and apply. A
+merge to `test` targets the test environment; a merge to `main` targets
+production. Both workflows authenticate to Azure through OIDC and apply the
+exact saved Terraform plan.
 
 ### Docker Image Build and Push
 
-When application code changes in a pull request targeting `main`, GitHub Actions must:
+When application code changes in a pull request targeting `main` or `test`,
+GitHub Actions:
 
 1. Build the Remix Weather Application.
 2. Build the Docker image.
 3. Tag the image with the commit SHA.
-4. Push the image to the appropriate Azure Container Registry.
+4. Validate the image without granting the PR identity write access.
+5. Push the commit-SHA image to ACR after merge through the protected test or
+   production workflow.
 
 Example image format:
 
@@ -494,7 +495,8 @@ Example image format:
 <acr-login-server>/weather-app:<commit-sha>
 ```
 
-> Status: The conditional Docker build and push workflow must be confirmed or completed before final submission.
+This separation keeps pull-request credentials read-only while ensuring only
+reviewed commits are published to ACR.
 
 ### Test Deployment
 
@@ -595,36 +597,43 @@ Before submission, verify all of the following:
 - Application logs show a Redis cache write and cache hit
 
 ## GitHub Actions Workflow Evidence
+
+### Static Terraform Validation
+
+![Successful Terraform formatting, validation, and tfsec jobs](docs/images/terraform-static-validation.png)
+
+### Pull Request Plan and TFLint
+
+![Successful Terraform plan and TFLint jobs](docs/images/terraform-plan-tflint.png)
+
+### Docker Pull Request Validation
+
+![Successful Docker PR image build](docs/images/docker-pr-validation.png)
+
 ### Test Environment
-#### Terraform Deploy
 
+#### Terraform and Application Deployment
 
-#### Application Deploy
+![Successful test Terraform and AKS deployment](docs/images/test-deployment-success.png)
 
 ### Prod Environment
+
 #### Terraform Deploy
+
 ![prod-terraform](./screenshots/prod-terraform-deploy.png)
 
 #### Application Deploy
+
 ![prod-app](./screenshots/prod-code-deploy.png)
 
 ## Known Limitations and Remaining Work
 
-Before final submission:
+The CI/CD workflows, commit-SHA image publication, test deployment, production
+deployment, rollout verification, and workflow evidence are complete.
 
-- Configure production AKS with a minimum of one node and maximum of three nodes.
-- Confirm or complete the Terraform apply workflow.
-- Complete the conditional Docker build and ACR push workflow.
-- Tag application images using the commit SHA.
-- Complete the conditional test AKS deployment workflow.
-- Complete the conditional production AKS deployment workflow.
-- Replace ACR and Redis placeholders in the Kubernetes overlays.
-- Review production Terraform output names.
-- Add final Terraform variable instructions or a non-sensitive example.
-- Add links to all team members’ GitHub profiles.
-- Complete the other team members’ contribution descriptions.
-- Confirm the professor and all team members are repository collaborators.
-- Add final test and production deployment evidence.
+Before submission, the team must still confirm that all collaborators and the
+professor have access, verify the final `main` ruleset and required checks, and
+coordinate Azure resource cleanup after grading evidence has been collected.
 
 ## Cleanup
 
