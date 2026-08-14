@@ -12,12 +12,9 @@ The application code and infrastructure code are maintained in the same GitHub r
 
 | Team Member | GitHub Profile | Contributions |
 | --- | --- | --- |
-| Todd O'Neil | [GitHub Profile](https://github.com/Todd-Oneil-CloudDev) | Developed all terraform infrastructure code, separated network and remote state into standalone terraform projects to enforce independance.  Created AKS, ACR, and REDIS modules to be envoked and reused by environments prod and test.  Prod and test environement terraform projects use .tfvars files to assign values to variables at runtime.  Configured github repo, repo secrets, and rulesets. |
+| Todd O'Neil | [GitHub Profile](https://github.com/Todd-Oneil-CloudDev) | Developed the Terraform infrastructure code and separated the network and remote state into standalone Terraform projects. Created reusable AKS, ACR, and Redis modules for the test and production environments. The test and production Terraform projects use `.tfvars` files to assign variable values at runtime. Configured the GitHub repository, repository secrets, and rulesets. |
 | Xinyi Zhao | [GitHub Profile](https://github.com/XinyiZhao-cloud) | Developed the Remix Weather Application and OpenWeather API integration; implemented Redis caching with a ten-minute TTL and an in-memory fallback; created the multi-stage Dockerfile; created the reusable Kubernetes base and test/production Kustomize overlays; wrote the application deployment guide covering local development, Docker, ACR, AKS, Redis, Kubernetes deployment, verification, and troubleshooting; participated in pull-request review and integration. |
-
-| Sara Mirzaei | [GitHub Profile](https://github.com/REPLACE-WITH-SARA-USERNAME) | _To be completed by Sara._ |
-
-> Replace all placeholder GitHub URLs and complete each team member’s contribution before submission.
+| Sara Mirzaei | [GitHub Profile](https://github.com/saraMir26) | Implemented and troubleshot the GitHub Actions CI/CD pipelines: Terraform formatting, validation, tfsec, TFLint, and pull-request planning; protected test and production Terraform plan/apply workflows using Azure OIDC; commit-SHA Docker image validation, ACR publishing, and AKS deployments; Kubernetes rollout, reachability, and failure diagnostics; and final workflow evidence and documentation. |
 
 ## Architecture
 
@@ -500,9 +497,10 @@ reviewed commits are published to ACR.
 
 ### Test Deployment
 
-When application code changes in a pull request targeting `test`, the application must be deployed to the test AKS cluster.
+After an approved application pull request is merged into `test`, the protected
+workflow deploys the application to the test AKS cluster.
 
-The workflow must:
+The workflow:
 
 - Run only for application changes
 - Authenticate using Azure federated identity
@@ -514,9 +512,10 @@ The workflow must:
 
 ### Production Deployment
 
-After an approved application pull request is merged into `main`, the application must be deployed to the production AKS cluster.
+After an approved application pull request is merged into `main`, the protected
+workflow deploys the application to the production AKS cluster.
 
-The workflow must:
+The workflow:
 
 - Run only when application code changes
 - Authenticate using Azure federated identity
@@ -540,7 +539,7 @@ The repository must meet the following collaboration requirements:
 - Required status checks must pass
 - Pull-request branches must be up to date before merging
 - Each team member contributes through feature or bug-fix branches
-- Each team member creates pull requests to `main`
+- Each team member creates pull requests targeting `test` or `main`, as appropriate
 - Work is divided into small, reviewable pull requests
 
 
@@ -616,15 +615,15 @@ Before submission, verify all of the following:
 
 ![Successful test Terraform and AKS deployment](docs/images/test-deployment-success.png)
 
-### Prod Environment
+### Production Environment
 
 #### Terraform Deploy
 
-![prod-terraform](./screenshots/prod-terraform-deploy.png)
+![Successful production Terraform deployment](screenshots/prod-terraform-deploy.png)
 
 #### Application Deploy
 
-![prod-app](./screenshots/prod-code-deploy.png)
+![Successful production application deployment](screenshots/prod-code-deploy.png)
 
 ## Known Limitations and Remaining Work
 
