@@ -501,7 +501,7 @@ Example image format:
 
 ### Test Deployment
 
-When application code changes in a pull request targeting `main`, the application must be deployed to the test AKS cluster.
+When application code changes in a pull request targeting `test`, the application must be deployed to the test AKS cluster.
 
 The workflow must:
 
